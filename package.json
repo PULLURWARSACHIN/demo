@@ -1,0 +1,19 @@
+{
+  "name": "calculator-app",
+  "version": "1.0.0",
+  "description": "Simple calculator app with an Express backend and a static frontend",
+  "private": true,
+  "type": "commonjs",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "test": "node --test backend/test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

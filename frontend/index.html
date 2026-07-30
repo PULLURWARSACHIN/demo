@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Calculator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="card">
+      <h1>Calculator</h1>
+      <p class="subtitle">Calculations run on the backend API.</p>
+
+      <form id="calc-form" novalidate>
+        <div class="row">
+          <label class="field">
+            <span>First number</span>
+            <input id="a" name="a" type="number" step="any" value="12" required />
+          </label>
+
+          <label class="field operation">
+            <span>Operation</span>
+            <select id="operation" name="operation">
+              <option value="add">+ add</option>
+              <option value="subtract">− subtract</option>
+              <option value="multiply">× multiply</option>
+              <option value="divide">÷ divide</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Second number</span>
+            <input id="b" name="b" type="number" step="any" value="4" required />
+          </label>
+        </div>
+
+        <button id="submit" type="submit">Calculate</button>
+      </form>
+
+      <output id="result" class="result" aria-live="polite">Enter two numbers and press Calculate.</output>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
