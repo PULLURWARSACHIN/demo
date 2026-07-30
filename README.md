@@ -52,6 +52,14 @@ Response `200`:
 { "operation": "add", "a": 12, "b": 4, "result": 16 }
 ```
 
-Operands may be numbers or numeric strings. Invalid input returns `400` with
-`{ "error": "..." }` — unsupported operation, non-finite operand, or division by
-zero.
+Operands may be numbers or numeric strings. Every failure returns `{ "error": "..." }`:
+
+| Case | Status |
+| --- | --- |
+| Unsupported or missing operation | `400` |
+| Non-numeric / empty / non-finite operand | `400` |
+| Integer outside JavaScript's safe range (silently rounded otherwise) | `400` |
+| Division by zero, or a result that overflows to infinity | `400` |
+| Malformed JSON body | `400` |
+| Oversized request body | `413` |
+| Unknown `/api/*` route | `404` |

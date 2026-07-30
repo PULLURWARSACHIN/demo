@@ -5,28 +5,28 @@ const { test, describe, before, after } = require('node:test');
 
 const { createApp } = require('../app');
 
-let server;
-let baseUrl;
-
-before(async () => {
-  server = createApp().listen(0, '127.0.0.1');
-  await new Promise((resolve) => server.once('listening', resolve));
-  baseUrl = `http://127.0.0.1:${server.address().port}`;
-});
-
-after(async () => {
-  await new Promise((resolve) => server.close(resolve));
-});
-
-function postCalculate(body) {
-  return fetch(`${baseUrl}/api/calculate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
 describe('HTTP API', () => {
+  let server;
+  let baseUrl;
+
+  before(async () => {
+    server = createApp().listen(0, '127.0.0.1');
+    await new Promise((resolve) => server.once('listening', resolve));
+    baseUrl = `http://127.0.0.1:${server.address().port}`;
+  });
+
+  after(async () => {
+    await new Promise((resolve) => server.close(resolve));
+  });
+
+  function postCalculate(body) {
+    return fetch(`${baseUrl}/api/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    });
+  }
+
   test('GET /api/health reports available operations', async () => {
     const response = await fetch(`${baseUrl}/api/health`);
     const body = await response.json();
@@ -48,22 +48,36 @@ describe('HTTP API', () => {
     });
   });
 
-  test('POST /api/calculate rejects bad input with 400', async () => {
-    const divideByZero = await postCalculate({ operation: 'divide', a: 1, b: 0 });
-    assert.equal(divideByZero.status, 400);
-    assert.match((await divideByZero.json()).error, /Division by zero/);
+  const badRequests = [
+    ['division by zero', { operation: 'divide', a: 1, b: 0 }, /Division by zero/],
+    ['a non-numeric operand', { operation: 'add', a: 'abc', b: 1 }, /finite number/],
+    ['an empty operand', { operation: 'add', a: '', b: 1 }, /finite number/],
+    ['an unsupported operation', { operation: 'pow', a: 2, b: 3 }, /Unsupported operation/],
+    ['a malformed JSON body', '{"operation":', /valid JSON/],
+    ['an unsafe integer', { operation: 'add', a: '9007199254740993', b: 1 }, /must be between/],
+    ['an inherited operation name', { operation: '__proto__', a: 1, b: 2 }, /Unsupported operation/],
+    ['a non-string operation', { operation: ['add'], a: 1, b: 2 }, /Unsupported operation/],
+  ];
 
-    const badOperand = await postCalculate({ operation: 'add', a: 'abc', b: 1 });
-    assert.equal(badOperand.status, 400);
-    assert.match((await badOperand.json()).error, /finite number/);
+  for (const [name, body, expectedError] of badRequests) {
+    test(`POST /api/calculate rejects ${name} with 400`, async () => {
+      const response = await postCalculate(body);
 
-    const badOperation = await postCalculate({ operation: 'pow', a: 2, b: 3 });
-    assert.equal(badOperation.status, 400);
-    assert.match((await badOperation.json()).error, /Unsupported operation/);
+      assert.equal(response.status, 400);
+      assert.match((await response.json()).error, expectedError);
+    });
+  }
+
+  test('oversized bodies return JSON 413, not 500', async () => {
+    const response = await postCalculate(`{"operation":"add","a":1,"b":${'1'.repeat(200_000)}}`);
+
+    assert.equal(response.status, 413);
+    assert.match((await response.json()).error, /too large/);
   });
 
   test('unknown API routes return JSON 404', async () => {
     const response = await fetch(`${baseUrl}/api/nope`);
+
     assert.equal(response.status, 404);
     assert.deepEqual(await response.json(), { error: 'Not found' });
   });

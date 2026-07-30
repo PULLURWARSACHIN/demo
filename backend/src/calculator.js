@@ -4,12 +4,14 @@
  * Pure calculator logic, shared by the HTTP layer and the unit tests.
  */
 
-const OPERATIONS = {
+// Null-prototype map so `operation` can never resolve an inherited member
+// such as "__proto__", "constructor" or "toString".
+const OPERATIONS = Object.assign(Object.create(null), {
   add: (a, b) => a + b,
   subtract: (a, b) => a - b,
   multiply: (a, b) => a * b,
   divide: (a, b) => a / b,
-};
+});
 
 const SUPPORTED_OPERATIONS = Object.keys(OPERATIONS);
 
@@ -25,20 +27,20 @@ class CalculationError extends Error {
  * Accepts numbers and numeric strings; rejects everything else.
  */
 function toNumber(value, fieldName) {
-  const error = new CalculationError(`"${fieldName}" must be a finite number`);
-
-  let parsed = value;
-
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (trimmed === '') {
-      throw error;
-    }
-    parsed = Number(trimmed);
-  }
+  // Empty/whitespace-only strings stay strings here so they fail the check below,
+  // rather than silently coercing to 0 the way `Number('  ')` would.
+  const parsed = typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
 
   if (typeof parsed !== 'number' || !Number.isFinite(parsed)) {
-    throw error;
+    throw new CalculationError(`"${fieldName}" must be a finite number`);
+  }
+
+  // Integers beyond the safe range are silently rounded by JS, so reject them
+  // instead of returning a value that is quietly wrong.
+  if (Number.isInteger(parsed) && !Number.isSafeInteger(parsed)) {
+    throw new CalculationError(
+      `"${fieldName}" must be between -${Number.MAX_SAFE_INTEGER} and ${Number.MAX_SAFE_INTEGER}`
+    );
   }
 
   return parsed;
@@ -52,7 +54,7 @@ function toNumber(value, fieldName) {
  * @throws {CalculationError} when the operation or operands are invalid
  */
 function calculate({ operation, a, b } = {}) {
-  const op = OPERATIONS[operation];
+  const op = typeof operation === 'string' ? OPERATIONS[operation] : undefined;
 
   if (!op) {
     throw new CalculationError(
